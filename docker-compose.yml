@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  meshtastic-bot:
+    build:
+      context: .
+      pull: true  # Instructs compose to pull base image updates during build
+    container_name: meshtastic_python_app
+    restart: unless-stopped
+
+    environment:
+      # Points to your existing host LLM instance
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      # Ensures Python logs stream immediately to 'docker compose logs' without buffering
+      - PYTHONUNBUFFERED=1
+      # Points Python logging module to persistent volume
+      - LOG_FILE=/app/logs/bot.log
+
+    # Enables host resolution inside Docker
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    # USB Serial Passthrough (CP2102 UART Bridge to /dev/ttyUSB0 inside container)
+    devices:
+      - /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0:/dev/ttyUSB0
+
+    group_add:
+      - dialout
+
+    volumes:
+      - /run/udev:/run/udev:ro
+      - ./logs:/app/logs  # Persists bot.log on host machine across image rebuilds
