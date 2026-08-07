@@ -10,6 +10,7 @@ from src.config import (
 from src.state import bot_state
 from src.llm import query_host_llm_with_context
 from src.mesh import send_mesh_message
+from src.dm import handle_direct_message
 
 
 async def process_queue():
@@ -17,10 +18,18 @@ async def process_queue():
     while True:
         packet_data = await bot_state.packet_queue.get()
         sender_handle = packet_data["sender"]
+        from_id = packet_data.get("from_id")
         msg_text = packet_data["text"]
+        is_dm = packet_data.get("is_dm", False)
 
         # Prevent self-messages appended to history from executing worker logic
         if sender_handle == BOT_HANDLE:
+            bot_state.packet_queue.task_done()
+            continue
+
+        # Route 1-on-1 Direct Messages to dedicated dm.py module
+        if is_dm:
+            await handle_direct_message(sender_handle, from_id, msg_text)
             bot_state.packet_queue.task_done()
             continue
 

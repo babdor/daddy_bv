@@ -7,7 +7,7 @@ from src.config import OLLAMA_HOST, MODEL_NAME, logger
 async_llm_client = AsyncClient(host=OLLAMA_HOST)
 
 
-async def query_host_llm_with_context(context_messages: list) -> str:
+async def query_host_llm_with_context(context_messages: list, is_dm: bool = False) -> str:
     """Passes context to LLM with natural, non-verbose persona parameters."""
 
     system_prompt = (
@@ -26,13 +26,20 @@ async def query_host_llm_with_context(context_messages: list) -> str:
         "- Your FINAL answer MUST be concise, plain text and up to 150 characters total."
     )
 
+    if is_dm:
+        system_prompt += (
+            "\n\nMODE: Direct Message (DM). You are responding to a PRIVATE 1-on-1 Direct Message "
+            "over an encrypted mesh link. Answer the sender directly and maintain your hacker persona."
+        )
+
     formatted_context = "\n".join(
         [f"[{msg['sender']}]: {msg['text']}" for msg in context_messages]
     )
 
     prompt = (
-        f"Recent Channel Chatter:\n{formatted_context}\n\n"
-        "Provide a short, natural contribution to this conversation."
+        f"Direct Message Request:\n{formatted_context}\n\nProvide a short, direct reply."
+        if is_dm
+        else f"Recent Channel Chatter:\n{formatted_context}\n\nProvide a short, natural contribution to this conversation."
     )
 
     try:
