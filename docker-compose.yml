@@ -1,6 +1,7 @@
 services:
   meshtastic-bot:
     image: ${DOCKER_IMAGE:-ghcr.io/babdor/daddy_bv:latest}
+    pull_policy: always
     # To build locally instead of pulling from GHCR, uncomment the build block below:
     # build:
     #   context: .
@@ -34,6 +35,7 @@ services:
     build:
       context: ./dashboard
     image: ${DASHBOARD_IMAGE:-ghcr.io/babdor/daddy_bv-dashboard:latest}
+    pull_policy: always
     container_name: meshtastic_bot_dashboard
     restart: unless-stopped
     ports:
@@ -44,3 +46,12 @@ services:
       - ./logs:/app/logs:ro  # Read-only access to bot.log
     depends_on:
       - meshtastic-bot
+
+  # Automatic Image Updater: Checks GHCR every 60s and updates container automatically
+  watchtower:
+    image: containrrr/watchtower
+    container_name: meshtastic_watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 60 --cleanup
