@@ -5,7 +5,7 @@ from pubsub import pub
 
 from src.config import SERIAL_PORT, logger
 from src.state import bot_state
-from src.mesh import on_receive, on_connection
+from src.mesh import on_receive, on_connection, on_ack_received
 from src.worker import process_queue
 
 
@@ -17,6 +17,7 @@ async def main():
 
     # Subscribe to PyPubSub events
     pub.subscribe(on_receive, "meshtastic.receive")
+    pub.subscribe(on_ack_received, "meshtastic.receive.ack")
     pub.subscribe(on_connection, "meshtastic.connection.established")
 
     interface = None

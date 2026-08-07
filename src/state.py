@@ -12,6 +12,19 @@ from src.config import (
 )
 
 
+class TxRecord:
+    """Track lifecycle of outbound transmissions."""
+
+    def __init__(self, packet_id: str, text: str, destination: str):
+        self.packet_id = str(packet_id)
+        self.text = text
+        self.destination = destination
+        self.timestamp = time.time()
+        self.status = "HARDWARE_ACCEPTED"  # HARDWARE_ACCEPTED, VERIFIED_RF, ACKNOWLEDGED, FAILED
+        self.verified_at = None
+        self.error_reason = None
+
+
 class BotState:
     """Encapsulates runtime state, buffers, node cache, and pacing logic."""
 
@@ -33,10 +46,32 @@ class BotState:
         self.my_node_id = None
         self.last_sent_text = None
 
+        # Transmission Verification Ledger
+        self.tx_ledger = {}
+
         # Threading / Async Interop Queue
         self.packet_queue = asyncio.Queue()
         self.main_loop = None
         self.interface_instance = None
+
+    def register_tx(self, packet_id: str, text: str, destination: str = "^all"):
+        """Registers a new outbound packet in the verification ledger."""
+        record = TxRecord(packet_id, text, destination)
+        self.tx_ledger[str(packet_id)] = record
+        if len(self.tx_ledger) > 50:
+            oldest_key = next(iter(self.tx_ledger))
+            del self.tx_ledger[oldest_key]
+        return record
+
+    def mark_tx_verified(self, packet_id: str, status: str = "VERIFIED_RF"):
+        """Marks a pending transmission as verified over RF hardware or ACKed."""
+        pid = str(packet_id)
+        if pid in self.tx_ledger:
+            record = self.tx_ledger[pid]
+            record.status = status
+            record.verified_at = time.time()
+            return record
+        return None
 
     def reset_conversation_pace(self):
         """Resets message counters and rolls new randomized values for threshold and cooldown."""

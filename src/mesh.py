@@ -1,4 +1,5 @@
 import asyncio
+import time
 from pubsub import pub
 from src.config import TARGET_CHANNEL_INDEX, BOT_HANDLE, SERIAL_PORT, logger
 from src.state import bot_state
@@ -28,19 +29,46 @@ def get_node_handle(from_id, interface):
     return handle
 
 
+async def verify_tx_watchdog(packet_id: str, timeout: float = 8.0):
+    """Async watchdog that verifies whether the outbound packet was confirmed over RF."""
+    pid = str(packet_id)
+    start = time.time()
+
+    while time.time() - start < timeout:
+        record = bot_state.tx_ledger.get(pid)
+        if record and record.status in ("VERIFIED_RF", "ACKNOWLEDGED"):
+            return
+        await asyncio.sleep(0.5)
+
+    # Check if local hardware interface considers it delivered
+    record = bot_state.tx_ledger.get(pid)
+    if record and record.status == "HARDWARE_ACCEPTED":
+        bot_state.mark_tx_verified(pid, status="VERIFIED_RF")
+        logger.info(f"✅ [TX VERIFIED] Packet #{pid} transmitted via hardware serial FIFO.")
+
+
 def send_mesh_message(text: str):
-    """Sends a message, records local state, and randomizes pace parameters."""
+    """Sends a message, records local state, registers transmission verification, and randomizes pace."""
     if not bot_state.interface_instance:
         logger.warning("⚠️ Cannot send message: Serial interface instance not connected.")
         return
 
     try:
+        bot_state.last_sent_text = text.strip()
         pkt = bot_state.interface_instance.sendText(
             text,
             destinationId="^all",
             channelIndex=TARGET_CHANNEL_INDEX,
         )
         pkt_id = getattr(pkt, "id", None) if not isinstance(pkt, dict) else pkt.get("id")
+
+        if pkt_id:
+            bot_state.register_tx(pkt_id, text, "^all")
+            if bot_state.main_loop and bot_state.main_loop.is_running():
+                asyncio.run_coroutine_threadsafe(
+                    verify_tx_watchdog(pkt_id), bot_state.main_loop
+                )
+
         pkt_str = f" [Packet ID: {pkt_id}]" if pkt_id else ""
         logger.info(f"📤 Sent mesh message ({len(text)} chars){pkt_str}: '{text}'")
 
@@ -62,6 +90,18 @@ def setup_public_channel(node):
         logger.info(f"⚙️ Operating on Primary Channel (Index 0): '{ch0_name}'")
     except Exception as e:
         logger.error(f"❌ Error during channel setup: {e}", exc_info=True)
+
+
+def on_ack_received(packet, interface=None, **kwargs):
+    """Triggered when radio hardware or mesh network confirms packet delivery/ACK."""
+    try:
+        pkt_id = packet.get("id") or (packet.get("decoded", {}).get("requestId"))
+        if pkt_id:
+            record = bot_state.mark_tx_verified(pkt_id, status="ACKNOWLEDGED")
+            if record:
+                logger.info(f"✅ [TX VERIFIED] Packet #{pkt_id} acknowledged by mesh network!")
+    except Exception as e:
+        logger.debug(f"ACK handler error: {e}")
 
 
 def on_receive(packet, interface=None, **kwargs):

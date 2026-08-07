@@ -323,6 +323,7 @@
     .log-line.INFO { color: #94a3b8; }
     .log-line.THINK { color: var(--accent-purple); font-weight: 500; }
     .log-line.SEND { color: var(--accent-cyan); font-weight: 600; }
+    .log-line.VERIFIED { color: var(--accent-emerald); font-weight: 600; text-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
     .log-line.RECV { color: var(--accent-emerald); }
     .log-line.WARN { color: var(--accent-amber); }
     .log-line.ERROR { color: var(--accent-rose); font-weight: 600; }
@@ -540,7 +541,9 @@
       const lineDiv = document.createElement('div');
       lineDiv.className = 'log-line';
 
-      if (line.includes('🧠 LLM Thinking')) {
+      if (line.includes('✅ [TX VERIFIED]')) {
+        lineDiv.classList.add('VERIFIED');
+      } else if (line.includes('🧠 LLM Thinking')) {
         lineDiv.classList.add('THINK');
         renderThought(line);
       } else if (line.includes('📤 Sent mesh message') || line.includes('📢 Transmitting')) {
