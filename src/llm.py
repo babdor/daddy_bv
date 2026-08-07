@@ -63,6 +63,18 @@ async def query_host_llm_with_context(context_messages: list) -> str:
         elapsed = time.time() - start_time
         raw_reply = response["message"]["content"].strip()
 
+        # Extract thinking/reasoning content for logging & dashboard display
+        thought_matches = re.findall(r"<think>(.*?)</think>", raw_reply, flags=re.DOTALL)
+        if not thought_matches and "</think>" in raw_reply:
+            thought_matches = [raw_reply.split("</think>")[0].replace("<think>", "")]
+        if not thought_matches:
+            thought_matches = re.findall(r"<\|channel\|>thought(.*?)(?=\n\n|\Z)", raw_reply, flags=re.DOTALL)
+
+        if thought_matches:
+            thought_text = " ".join([t.strip().replace("\n", " ").replace("\r", "") for t in thought_matches if t.strip()])
+            if thought_text:
+                logger.info(f"🧠 LLM Thinking ({len(thought_text)} chars): '{thought_text}'")
+
         # Robust cleaning for reasoning models
         clean_reply = re.sub(r"<think>.*?</think>", "", raw_reply, flags=re.DOTALL)
         clean_reply = re.sub(r"<\|channel\|>thought.*?\n", "", clean_reply, flags=re.DOTALL)

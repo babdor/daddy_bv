@@ -29,3 +29,18 @@ services:
     volumes:
       - /run/udev:/run/udev:ro
       - ./logs:/app/logs  # Persists bot.log on host machine
+
+  bot-dashboard:
+    build:
+      context: ./dashboard
+    image: ${DASHBOARD_IMAGE:-ghcr.io/babdor/daddy_bv-dashboard:latest}
+    container_name: meshtastic_bot_dashboard
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - LOG_FILE=/app/logs/bot.log
+    volumes:
+      - ./logs:/app/logs:ro  # Read-only access to bot.log
+    depends_on:
+      - meshtastic-bot
