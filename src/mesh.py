@@ -53,6 +53,9 @@ def send_mesh_message(text: str, destination_id: str = "^all"):
         logger.warning("⚠️ Cannot send message: Serial interface instance not connected.")
         return
 
+    dest_label = f" [DM -> {destination_id}]" if destination_id != "^all" else " [Broadcast -> ^all]"
+    logger.info(f"📡 [TX INITIATED]{dest_label} Preparing hardware transmission ({len(text)} chars): '{text}'")
+
     try:
         bot_state.last_sent_text = text.strip()
         pkt = bot_state.interface_instance.sendText(
@@ -69,9 +72,8 @@ def send_mesh_message(text: str, destination_id: str = "^all"):
                     verify_tx_watchdog(pkt_id), bot_state.main_loop
                 )
 
-        dest_label = f" [DM -> {destination_id}]" if destination_id != "^all" else ""
         pkt_str = f" [Packet ID: {pkt_id}]" if pkt_id else ""
-        logger.info(f"📤 Sent mesh message{dest_label} ({len(text)} chars){pkt_str}: '{text}'")
+        logger.info(f"📤 [TX DISPATCHED] Message handed to serial interface{pkt_str}: '{text}'")
 
         if destination_id == "^all":
             # Reset counters & select new random triggers
@@ -81,7 +83,7 @@ def send_mesh_message(text: str, destination_id: str = "^all"):
             bot_state.message_buffer.append({"sender": BOT_HANDLE, "text": text})
 
     except Exception as e:
-        logger.error(f"❌ Failed to transmit message over serial interface: {e}", exc_info=True)
+        logger.error(f"❌ [TX FAILED] Serial transmission error: {e}", exc_info=True)
 
 
 def setup_public_channel(node):
