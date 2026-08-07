@@ -560,7 +560,7 @@
       } else if (line.includes('🎲 Pacing randomized')) {
         lineDiv.classList.add('INFO');
         parsePacingConfig(line);
-      } else if (line.includes('🆔 Local Node Initialized:')) {
+      } else if (line.includes('Local Node Initialized')) {
         lineDiv.classList.add('INFO');
         parseNodeInfo(line);
       } else if (line.includes('[WARNING]')) {
@@ -665,9 +665,11 @@
     }
 
     function parseNodeInfo(line) {
-      const match = line.match(/Local Node Initialized:\s*(\S+)\s*\((.*?)\)/);
+      const match = line.match(/Local Node Initialized:\s*(\S+)(?:\s*\((.*?)\))?/i);
       if (match) {
-        document.getElementById('node-id').innerText = `${match[1]} (${match[2]})`;
+        const id = match[1];
+        const num = match[2] ? ` (${match[2]})` : '';
+        document.getElementById('node-id').innerText = `${id}${num}`;
       }
     }
 

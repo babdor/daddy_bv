@@ -27,7 +27,7 @@ async def get_dashboard():
     return HTMLResponse("<h1>Dashboard index.html not found</h1>", status_code=404)
 
 
-def read_last_lines(file_path: str, max_lines: int = 400) -> List[str]:
+def read_last_lines(file_path: str, max_lines: int = 1000) -> List[str]:
     if not os.path.exists(file_path):
         return []
     try:
@@ -40,7 +40,7 @@ def read_last_lines(file_path: str, max_lines: int = 400) -> List[str]:
 
 @app.get("/api/logs")
 async def get_initial_logs():
-    lines = read_last_lines(LOG_FILE_PATH, max_lines=400)
+    lines = read_last_lines(LOG_FILE_PATH, max_lines=1000)
     return {"logs": lines}
 
 
