@@ -30,19 +30,27 @@ def get_node_handle(from_id, interface):
 
 def send_mesh_message(text: str):
     """Sends a message, records local state, and randomizes pace parameters."""
-    if bot_state.interface_instance:
+    if not bot_state.interface_instance:
+        logger.warning("⚠️ Cannot send message: Serial interface instance not connected.")
+        return
+
+    try:
         bot_state.last_sent_text = text.strip()
         bot_state.interface_instance.sendText(
             text,
             destinationId="^all",
             channelIndex=TARGET_CHANNEL_INDEX,
         )
+        logger.info(f"📤 Sent mesh message ({len(text)} chars): '{text}'")
 
         # Reset counters & select new random triggers
         bot_state.reset_conversation_pace()
 
         # Store local output in history buffer
         bot_state.message_buffer.append({"sender": BOT_HANDLE, "text": text})
+
+    except Exception as e:
+        logger.error(f"❌ Failed to transmit message over serial interface: {e}", exc_info=True)
 
 
 def setup_public_channel(node):
@@ -55,13 +63,14 @@ def setup_public_channel(node):
         logger.error(f"❌ Error during channel setup: {e}", exc_info=True)
 
 
-def on_receive(packet, interface):
+def on_receive(packet, interface=None, **kwargs):
     """Bridge callback: receives PyPubSub events, filters echoes, and extracts handle."""
     try:
-        if (
-            "decoded" in packet
-            and packet["decoded"].get("portnum") == "TEXT_MESSAGE_APP"
-        ):
+        if "decoded" in packet:
+            portnum = packet["decoded"].get("portnum")
+            if portnum not in ("TEXT_MESSAGE_APP", 1, "1"):
+                return
+
             channel_index = packet.get("channel", 0)
             if channel_index != TARGET_CHANNEL_INDEX:
                 return
@@ -88,16 +97,16 @@ def on_receive(packet, interface):
             sender_handle = get_node_handle(from_id, interface)
 
             if bot_state.main_loop and bot_state.main_loop.is_running():
-                asyncio.run_coroutine_threadsafe(
-                    bot_state.packet_queue.put({"sender": sender_handle, "text": msg}),
-                    bot_state.main_loop,
+                bot_state.main_loop.call_soon_threadsafe(
+                    bot_state.packet_queue.put_nowait,
+                    {"sender": sender_handle, "text": msg},
                 )
 
     except Exception as e:
         logger.error(f"Error bridging packet to async queue: {e}", exc_info=True)
 
 
-def on_connection(interface, topic=pub.AUTO_TOPIC):
+def on_connection(interface=None, topic=pub.AUTO_TOPIC, **kwargs):
     """Triggered upon successful serial link initialization."""
     bot_state.interface_instance = interface
 

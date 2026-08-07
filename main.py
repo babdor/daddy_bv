@@ -19,8 +19,21 @@ async def main():
     pub.subscribe(on_receive, "meshtastic.receive")
     pub.subscribe(on_connection, "meshtastic.connection.established")
 
-    logger.info(f"Connecting to serial interface at {SERIAL_PORT}...")
-    interface = meshtastic.serial_interface.SerialInterface(devPath=SERIAL_PORT)
+    interface = None
+    max_retries = 10
+    retry_delay = 5
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            logger.info(f"🔌 Connecting to serial interface at {SERIAL_PORT} (Attempt {attempt}/{max_retries})...")
+            interface = meshtastic.serial_interface.SerialInterface(devPath=SERIAL_PORT)
+            break
+        except Exception as e:
+            logger.warning(f"⚠️ Serial connection attempt {attempt}/{max_retries} failed: {e}")
+            if attempt == max_retries:
+                logger.critical(f"❌ Could not connect to serial port {SERIAL_PORT} after {max_retries} attempts.")
+                raise
+            await asyncio.sleep(retry_delay)
 
     while True:
         await asyncio.sleep(1)

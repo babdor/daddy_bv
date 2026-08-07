@@ -76,5 +76,10 @@ async def process_queue():
                 if ai_reply:
                     logger.info(f"📢 Transmitting Grey Beard Reply: '{ai_reply}'")
                     send_mesh_message(ai_reply)
+                else:
+                    logger.warning(
+                        "⚠️ LLM reply was empty or failed. Resetting pace counter to avoid rapid re-querying."
+                    )
+                    bot_state.reset_conversation_pace()
 
         bot_state.packet_queue.task_done()

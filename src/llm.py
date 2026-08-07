@@ -1,3 +1,4 @@
+import asyncio
 import re
 import time
 from ollama import AsyncClient
@@ -40,17 +41,24 @@ async def query_host_llm_with_context(context_messages: list) -> str:
         )
         start_time = time.time()
 
-        response = await async_llm_client.chat(
-            model=MODEL_NAME,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt},
-            ],
-            options={
-                "temperature": 0.6,
-                "num_predict": 2048,  # Prevents truncation during reasoning
-            },
-        )
+        try:
+            response = await asyncio.wait_for(
+                async_llm_client.chat(
+                    model=MODEL_NAME,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": prompt},
+                    ],
+                    options={
+                        "temperature": 0.6,
+                        "num_predict": 2048,  # Prevents truncation during reasoning
+                    },
+                ),
+                timeout=180.0,
+            )
+        except asyncio.TimeoutError:
+            logger.warning(f"⚠️ Host LLM query timed out after 180s ({MODEL_NAME}).")
+            return ""
 
         elapsed = time.time() - start_time
         raw_reply = response["message"]["content"].strip()
