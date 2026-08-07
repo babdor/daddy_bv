@@ -35,13 +35,14 @@ def send_mesh_message(text: str):
         return
 
     try:
-        bot_state.last_sent_text = text.strip()
-        bot_state.interface_instance.sendText(
+        pkt = bot_state.interface_instance.sendText(
             text,
             destinationId="^all",
             channelIndex=TARGET_CHANNEL_INDEX,
         )
-        logger.info(f"📤 Sent mesh message ({len(text)} chars): '{text}'")
+        pkt_id = getattr(pkt, "id", None) if not isinstance(pkt, dict) else pkt.get("id")
+        pkt_str = f" [Packet ID: {pkt_id}]" if pkt_id else ""
+        logger.info(f"📤 Sent mesh message ({len(text)} chars){pkt_str}: '{text}'")
 
         # Reset counters & select new random triggers
         bot_state.reset_conversation_pace()
