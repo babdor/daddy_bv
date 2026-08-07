@@ -66,5 +66,7 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          provenance: false
+          output: type=image,name=${{ env.REGISTRY }}/${{ matrix.image_name }},push=${{ github.event_name != 'pull_request' }},compression=gzip,compression-level=9,force-compression=true
           cache-from: type=gha
           cache-to: type=gha,mode=max
