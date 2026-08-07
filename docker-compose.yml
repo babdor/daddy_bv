@@ -49,11 +49,12 @@ services:
 
   # Automatic Image Updater: Checks GHCR every 60s and updates container automatically
   watchtower:
-    image: containrrr/watchtower
+    image: containrrr/watchtower:latest
     container_name: meshtastic_watchtower
     restart: unless-stopped
     environment:
-      - DOCKER_API_VERSION=1.41
+      - DOCKER_API_VERSION=1.44
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=60
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 60 --cleanup
