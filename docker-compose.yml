@@ -37,7 +37,7 @@ services:
     container_name: meshtastic_bot_dashboard
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "9000:9000"
     environment:
       - LOG_FILE=/app/logs/bot.log
     volumes:
